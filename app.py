@@ -48,8 +48,12 @@ def add_indicators(df):
     df["sma_20"] = sma_indicator(df["close"], window=20)
     df["ema_20"] = ema_indicator(df["close"], window=20)
     df["rsi_14"] = rsi(df["close"], window=14)
-    macd_df = macd(df["close"])
-    df["macd"] = macd_df["MACD"]
+    try:
+        macd_df = macd(df["close"])
+        df["macd"] = macd_df["MACD"]
+    except Exception as e:
+        st.warning(f"⚠️ MACD calculation failed: {e}")
+        df["macd"] = None
     df["mlmi"] = compute_mlmi(df["close"], window=14)
     return df
 
@@ -73,7 +77,6 @@ def fetch_data():
         st.error(f"⚠️ Failed to fetch data: {e}")
         return pd.DataFrame()
 
-# Safe manual refresh
 if "manual_refresh" not in st.session_state:
     st.session_state.manual_refresh = False
 
