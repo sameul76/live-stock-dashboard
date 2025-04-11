@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import datetime
 from sklearn.neighbors import KNeighborsRegressor
-from ta.trend import sma_indicator, ema_indicator, macd
+from ta.trend import sma_indicator, ema_indicator, MACD
 from ta.momentum import rsi
 from alpaca_trade_api.rest import REST
 import plotly.express as px
@@ -21,7 +21,7 @@ lookback_minutes = st.sidebar.slider("Lookback (minutes)", 15, 240, 60, step=15)
 refresh_rate = st.sidebar.slider("Auto-refresh (seconds)", 15, 300, 60)
 indicators_to_show = st.sidebar.multiselect(
     "Select indicators to plot",
-    options=["sma_20", "ema_20", "rsi_14", "macd", "mlmi"],
+    options=["sma_20", "ema_20", "rsi_14", "macd", "macd_signal", "macd_diff", "mlmi"],
     default=["sma_20", "ema_20", "rsi_14", "macd", "mlmi"]
 )
 
@@ -42,22 +42,20 @@ def compute_mlmi(series, window=14):
 def add_indicators(df):
     if len(df) < 20:
         st.warning(f"⚠️ Only {len(df)} rows — not enough for indicators.")
-        for col in ["sma_20", "ema_20", "rsi_14", "macd", "mlmi"]:
+        for col in ["sma_20", "ema_20", "rsi_14", "macd", "macd_signal", "macd_diff", "mlmi"]:
             df[col] = None
         return df
     df["sma_20"] = sma_indicator(df["close"], window=20)
     df["ema_20"] = ema_indicator(df["close"], window=20)
     df["rsi_14"] = rsi(df["close"], window=14)
     try:
-from ta.trend import MACD
-
-macd_calc = MACD(close=df["close"])
-df["macd"] = macd_calc.macd()
-df["macd_signal"] = macd_calc.macd_signal()
-df["macd_diff"] = macd_calc.macd_diff()
+        macd_calc = MACD(close=df["close"])
+        df["macd"] = macd_calc.macd()
+        df["macd_signal"] = macd_calc.macd_signal()
+        df["macd_diff"] = macd_calc.macd_diff()
     except Exception as e:
         st.warning(f"⚠️ MACD calculation failed: {e}")
-        df["macd"] = None
+        df["macd"] = df["macd_signal"] = df["macd_diff"] = None
     df["mlmi"] = compute_mlmi(df["close"], window=14)
     return df
 
