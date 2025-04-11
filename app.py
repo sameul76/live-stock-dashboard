@@ -75,9 +75,17 @@ def fetch_data():
         st.error(f"⚠️ Failed to fetch data: {e}")
         return pd.DataFrame()
 
-# Refresh button
+# Refresh mechanism
+if "manual_refresh" not in st.session_state:
+    st.session_state.manual_refresh = False
+
 if st.button("🔄 Refresh Now"):
+    st.session_state.manual_refresh = True
+
+# Clear cache manually if the button was clicked
+if st.session_state.manual_refresh:
     fetch_data.clear()
+    st.session_state.manual_refresh = False
     st.experimental_rerun()
 
 # Load the data
