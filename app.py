@@ -63,7 +63,7 @@ def add_indicators(df):
 @st.cache_data(ttl=60)
 def fetch_data():
     try:
-        bars = api.get_bars(symbol, "5Min", start=start_time.isoformat(), end=end_time.isoformat(), feed="sip").df
+        bars = api.get_bars(symbol, "1Min", start=start_time.isoformat(), end=end_time.isoformat(), feed="sip").df
         if bars.empty:
             return pd.DataFrame()
         bars.reset_index(inplace=True)
