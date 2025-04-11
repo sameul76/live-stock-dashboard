@@ -1,4 +1,3 @@
-pip install plotly
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -93,7 +92,6 @@ else:
     fig = px.line(df, x="datetime", y=["close"] + available_indicators, title=f"{symbol} Price and Indicators")
     st.plotly_chart(fig, use_container_width=True)
 
-    # Plot each indicator separately
     for ind in available_indicators:
         if df[ind].notna().any():
             st.subheader(f"{ind.upper()} Indicator")
@@ -103,6 +101,5 @@ else:
     st.subheader("🧾 Latest Data")
     st.dataframe(df.tail(50))
 
-    # Download CSV
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download CSV", csv, f"{symbol}_live.csv", "text/csv")
