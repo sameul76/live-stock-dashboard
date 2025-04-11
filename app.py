@@ -49,8 +49,12 @@ def add_indicators(df):
     df["ema_20"] = ema_indicator(df["close"], window=20)
     df["rsi_14"] = rsi(df["close"], window=14)
     try:
-        macd_df = macd(df["close"])
-        df["macd"] = macd_df["MACD"]
+from ta.trend import MACD
+
+macd_calc = MACD(close=df["close"])
+df["macd"] = macd_calc.macd()
+df["macd_signal"] = macd_calc.macd_signal()
+df["macd_diff"] = macd_calc.macd_diff()
     except Exception as e:
         st.warning(f"⚠️ MACD calculation failed: {e}")
         df["macd"] = None
