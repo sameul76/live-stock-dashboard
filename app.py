@@ -73,18 +73,15 @@ df = fetch_data()
 if df.empty:
     st.error("❌ No data returned.")
 else:
-    # Plot selected indicators + price
     available_indicators = [col for col in indicators_to_show if col in df.columns]
     st.subheader(f"{symbol} — Last {lookback_minutes} min")
     st.line_chart(df.set_index("datetime")[["close"] + available_indicators])
 
-    # Optional: plot each indicator separately
     for ind in available_indicators:
         if df[ind].notna().any():
             st.subheader(f"{ind.upper()} Indicator")
             st.line_chart(df.set_index("datetime")[[ind]])
 
-    # Show table + export
     st.subheader("🧾 Latest Data")
     st.dataframe(df.tail(50))
     csv = df.to_csv(index=False).encode("utf-8")
