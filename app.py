@@ -63,7 +63,7 @@ def fetch_data():
     bars = api.get_bars(symbol, "5Min", start=start_time.isoformat(), end=end_time.isoformat(), feed="sip").df
     bars.reset_index(inplace=True)
     bars = bars.rename(columns={"timestamp": "datetime"})
-    bars["datetime"] = pd.to_datetime(bars["datetime"], utc=True)
+    bars["datetime"] = bars["datetime"].dt.tz_convert("America/Los_Angeles")
     bars = add_indicators(bars)
     return bars
 
