@@ -86,7 +86,7 @@ if st.button("🔄 Refresh Now"):
 if st.session_state.manual_refresh:
     fetch_data.clear()
     st.session_state.manual_refresh = False
-    st.experimental_rerun()
+    st.info("🔄 Refresh requested — please click the button again or reload the app.")
 
 # Load the data
 df = fetch_data()
