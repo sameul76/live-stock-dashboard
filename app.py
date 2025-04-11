@@ -87,10 +87,16 @@ if df.empty:
     st.error("❌ No data returned.")
 else:
     available_indicators = [col for col in indicators_to_show if col in df.columns]
+    st.write("📊 Data columns available:", df.columns.tolist())
+    st.write("📊 Selected indicators:", available_indicators)
 
-    st.subheader(f"{symbol} — Last {lookback_minutes} Minutes")
-    fig = px.line(df, x="datetime", y=["close"] + available_indicators, title=f"{symbol} Price and Indicators")
-    st.plotly_chart(fig, use_container_width=True)
+    plot_columns = ["close"] + [ind for ind in available_indicators if ind in df.columns and df[ind].notna().any()]
+    if not plot_columns:
+        st.warning("⚠️ No valid indicators to plot.")
+    else:
+        st.subheader(f"{symbol} — Last {lookback_minutes} Minutes")
+        fig = px.line(df, x="datetime", y=plot_columns, title=f"{symbol} Price and Indicators")
+        st.plotly_chart(fig, use_container_width=True)
 
     for ind in available_indicators:
         if df[ind].notna().any():
