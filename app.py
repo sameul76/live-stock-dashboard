@@ -48,8 +48,7 @@ def add_indicators(df):
     df["sma_20"] = sma_indicator(df["close"], window=20)
     df["ema_20"] = ema_indicator(df["close"], window=20)
     df["rsi_14"] = rsi(df["close"], window=14)
-    try:
-        macd_calc = MACD(close=df["close"])
+            macd_calc = MACD(close=df["close"])
         df["macd"] = macd_calc.macd()
         df["macd_signal"] = macd_calc.macd_signal()
         df["macd_diff"] = macd_calc.macd_diff()
