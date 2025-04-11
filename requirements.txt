@@ -1,0 +1,6 @@
+streamlit
+alpaca-trade-api
+pandas
+numpy
+ta
+scikit-learn
