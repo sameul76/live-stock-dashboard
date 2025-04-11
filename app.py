@@ -6,16 +6,17 @@ from sklearn.neighbors import KNeighborsRegressor
 from ta.trend import sma_indicator, ema_indicator, macd
 from ta.momentum import rsi
 from alpaca_trade_api.rest import REST
+import plotly.express as px
 
-# Load Alpaca API keys from Streamlit secrets
+# Load API keys securely from Streamlit secrets
 ALPACA_API_KEY = st.secrets["ALPACA_API_KEY"]
 ALPACA_SECRET_KEY = st.secrets["ALPACA_SECRET_KEY"]
 BASE_URL = "https://paper-api.alpaca.markets"
 api = REST(ALPACA_API_KEY, ALPACA_SECRET_KEY, base_url=BASE_URL)
 
-# Page config
+# Page layout
 st.set_page_config(page_title="📈 Live Stock Dashboard", layout="wide")
-st.title("📈 Live Stock Dashboard with MLMI & Indicators")
+st.title("📈 Live Stock Dashboard with MLMI & Technical Indicators")
 
 # Sidebar controls
 symbol = st.sidebar.selectbox("Choose symbol", ["LCID", "MTC", "ADIL", "JAGX", "ADD", "TPET"])
@@ -27,11 +28,11 @@ indicators_to_show = st.sidebar.multiselect(
     default=["sma_20", "ema_20", "rsi_14", "macd", "mlmi"]
 )
 
-# Define time window
+# Time window
 end_time = datetime.datetime.now(datetime.timezone.utc)
 start_time = end_time - datetime.timedelta(minutes=lookback_minutes)
 
-# MLMI helper
+# MLMI calculation
 def compute_mlmi(series, window=14):
     mlmi = [None] * window
     for i in range(window, len(series)):
@@ -43,9 +44,9 @@ def compute_mlmi(series, window=14):
         mlmi.append(pred[0])
     return pd.Series(mlmi, index=series.index)
 
-# Add indicators to DataFrame
+# Add indicators
 def add_indicators(df):
-    if len(df) < 14:
+    if len(df) < 20:
         st.warning(f"⚠️ Only {len(df)} rows — not enough for indicators.")
         for col in ["sma_20", "ema_20", "rsi_14", "macd", "mlmi"]:
             df[col] = None
@@ -53,36 +54,54 @@ def add_indicators(df):
     df["sma_20"] = sma_indicator(df["close"], window=20)
     df["ema_20"] = ema_indicator(df["close"], window=20)
     df["rsi_14"] = rsi(df["close"], window=14)
-    df["macd"] = macd(df["close"])
+    macd_df = macd(df["close"])
+    df["macd"] = macd_df["MACD"]
     df["mlmi"] = compute_mlmi(df["close"], window=14)
     return df
 
-# Fetch and process data
-@st.cache_data(ttl=refresh_rate)
+# Fetch stock data
+@st.cache_data(ttl=60)
 def fetch_data():
-    bars = api.get_bars(symbol, "5Min", start=start_time.isoformat(), end=end_time.isoformat(), feed="sip").df
-    bars.reset_index(inplace=True)
-    bars = bars.rename(columns={"timestamp": "datetime"})
-    bars["datetime"] = bars["datetime"].dt.tz_convert("America/Los_Angeles")
-    bars = add_indicators(bars)
-    return bars
+    try:
+        bars = api.get_bars(symbol, "5Min", start=start_time.isoformat(), end=end_time.isoformat(), feed="sip").df
+        if bars.empty:
+            return pd.DataFrame()
+        bars.reset_index(inplace=True)
+        bars = bars.rename(columns={"timestamp": "datetime"})
+        bars["datetime"] = bars["datetime"].dt.tz_convert("America/Los_Angeles")  # Convert to PST
+        bars = add_indicators(bars)
+        return bars
+    except Exception as e:
+        st.error(f"⚠️ Failed to fetch data: {e}")
+        return pd.DataFrame()
 
-# Load data
+# Refresh button
+if st.button("🔄 Refresh Now"):
+    fetch_data.clear()
+    st.experimental_rerun()
+
+# Load the data
 df = fetch_data()
 
 if df.empty:
     st.error("❌ No data returned.")
 else:
     available_indicators = [col for col in indicators_to_show if col in df.columns]
-    st.subheader(f"{symbol} — Last {lookback_minutes} min")
-    st.line_chart(df.set_index("datetime")[["close"] + available_indicators])
 
+    st.subheader(f"{symbol} — Last {lookback_minutes} Minutes")
+    fig = px.line(df, x="datetime", y=["close"] + available_indicators, title=f"{symbol} Price and Indicators")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Plot each indicator separately
     for ind in available_indicators:
         if df[ind].notna().any():
             st.subheader(f"{ind.upper()} Indicator")
-            st.line_chart(df.set_index("datetime")[[ind]])
+            ind_fig = px.line(df, x="datetime", y=ind, title=f"{ind.upper()} Over Time")
+            st.plotly_chart(ind_fig, use_container_width=True)
 
     st.subheader("🧾 Latest Data")
     st.dataframe(df.tail(50))
+
+    # Download CSV
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ Download CSV", csv, f"{symbol}_live.csv", "text/csv")
