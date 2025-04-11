@@ -8,17 +8,14 @@ from ta.momentum import rsi
 from alpaca_trade_api.rest import REST
 import plotly.express as px
 
-# Load API keys securely from Streamlit secrets
 ALPACA_API_KEY = st.secrets["ALPACA_API_KEY"]
 ALPACA_SECRET_KEY = st.secrets["ALPACA_SECRET_KEY"]
 BASE_URL = "https://paper-api.alpaca.markets"
 api = REST(ALPACA_API_KEY, ALPACA_SECRET_KEY, base_url=BASE_URL)
 
-# Page layout
 st.set_page_config(page_title="📈 Live Stock Dashboard", layout="wide")
 st.title("📈 Live Stock Dashboard with MLMI & Technical Indicators")
 
-# Sidebar controls
 symbol = st.sidebar.selectbox("Choose symbol", ["LCID", "MTC", "ADIL", "JAGX", "ADD", "TPET"])
 lookback_minutes = st.sidebar.slider("Lookback (minutes)", 15, 240, 60, step=15)
 refresh_rate = st.sidebar.slider("Auto-refresh (seconds)", 15, 300, 60)
@@ -28,11 +25,9 @@ indicators_to_show = st.sidebar.multiselect(
     default=["sma_20", "ema_20", "rsi_14", "macd", "mlmi"]
 )
 
-# Time window
 end_time = datetime.datetime.now(datetime.timezone.utc)
 start_time = end_time - datetime.timedelta(minutes=lookback_minutes)
 
-# MLMI calculation
 def compute_mlmi(series, window=14):
     mlmi = [None] * window
     for i in range(window, len(series)):
@@ -44,7 +39,6 @@ def compute_mlmi(series, window=14):
         mlmi.append(pred[0])
     return pd.Series(mlmi, index=series.index)
 
-# Add indicators
 def add_indicators(df):
     if len(df) < 20:
         st.warning(f"⚠️ Only {len(df)} rows — not enough for indicators.")
@@ -59,36 +53,38 @@ def add_indicators(df):
     df["mlmi"] = compute_mlmi(df["close"], window=14)
     return df
 
-# Fetch stock data
 @st.cache_data(ttl=60)
 def fetch_data():
     try:
-        bars = api.get_bars(symbol, "1Min", start=start_time.isoformat(), end=end_time.isoformat(), feed="sip").df
+        try:
+            bars = api.get_bars(symbol, "1Min", start=start_time.isoformat(), end=end_time.isoformat(), feed="sip").df
+        except Exception:
+            st.warning("⚠️ 1-minute data not available — using 5-minute bars instead.")
+            bars = api.get_bars(symbol, "5Min", start=start_time.isoformat(), end=end_time.isoformat(), feed="sip").df
+
         if bars.empty:
             return pd.DataFrame()
         bars.reset_index(inplace=True)
         bars = bars.rename(columns={"timestamp": "datetime"})
-        bars["datetime"] = bars["datetime"].dt.tz_convert("America/Los_Angeles")  # Convert to PST
+        bars["datetime"] = bars["datetime"].dt.tz_convert("America/Los_Angeles")
         bars = add_indicators(bars)
         return bars
     except Exception as e:
         st.error(f"⚠️ Failed to fetch data: {e}")
         return pd.DataFrame()
 
-# Refresh mechanism
+# Safe manual refresh
 if "manual_refresh" not in st.session_state:
     st.session_state.manual_refresh = False
 
 if st.button("🔄 Refresh Now"):
     st.session_state.manual_refresh = True
 
-# Clear cache manually if the button was clicked
 if st.session_state.manual_refresh:
     fetch_data.clear()
     st.session_state.manual_refresh = False
     st.info("🔄 Refresh requested — please click the button again or reload the app.")
 
-# Load the data
 df = fetch_data()
 
 if df.empty:
